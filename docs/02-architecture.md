@@ -16,6 +16,7 @@ Run `fetch_data.py` once. The app only reads `data/`.
 | `town_access(d, sites)` | data, sites | towns + `nearest_miles` (min distance to any site) + `trials_in_reach` (count of **distinct** NCT ids with a site ≤ 25 mi) |
 | `county_scores(d, mid)` | data, measure id | (county DataFrame, towns, sites); see §3 |
 | `candidate_hospitals(d, county, sites)` | | acute hospitals in county (`FACILITY_TYPE == "Acute Hospital"`), `beds = ICU+MED_SURG+PEDIATRIC`, `nearest_trial_miles`, sorted by beds desc |
+| `simulate_new_site(d, mid, lat, lon, label)` | data, measure id, point, name | (before_df, after_df): county tables with `rank` and `newly_reached`; after score uses the ORIGINAL max |
 | `ej_summary(d, county)` | | (total EJ residents int, DataFrame by town: ej_pop, neighborhoods, limited_english_pct = population-weighted mean of LIMENGHHPCT) |
 | `outreach_brief(condition, row, state_prev, hospitals, ej_pop, ej_towns)` | | markdown string, rule-based recommendation (also the AI fallback) |
 
