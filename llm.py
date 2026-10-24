@@ -1,9 +1,10 @@
 """One optional LLM call. Returns None on any problem so the app can fall back.
 
 Env vars (no keys in code):
-  LLM_PROVIDER   "bedrock" or "anthropic"
+  LLM_PROVIDER   "bedrock", "anthropic" or "groq"
   LLM_MODEL      model id for that provider
   ANTHROPIC_API_KEY   for "anthropic" (called with requests, no SDK needed)
+  GROQ_API_KEY        for "groq" (OpenAI-compatible API, called with requests)
   AWS_* credentials   for "bedrock" (needs boto3: pip install boto3)
 """
 import os
@@ -24,6 +25,28 @@ def _anthropic(prompt, system, model):
     )
     r.raise_for_status()
     return r.json()["content"][0]["text"]
+
+
+def _groq(prompt, system, model):
+    import requests
+
+    try:  # fixes Mac SSL errors
+        import truststore
+        truststore.inject_into_ssl()
+    except ImportError:
+        pass
+
+    messages = [{"role": "user", "content": prompt}]
+    if system:
+        messages.insert(0, {"role": "system", "content": system})
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
+        json={"model": model, "max_tokens": 800, "messages": messages},
+        timeout=TIMEOUT,
+    )
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
 
 
 def _bedrock(prompt, system, model):
@@ -50,6 +73,8 @@ def generate(prompt: str, system: str = "") -> str | None:
             return None
         if provider == "anthropic":
             text = _anthropic(prompt, system, model)
+        elif provider == "groq":
+            text = _groq(prompt, system, model)
         elif provider == "bedrock":
             text = _bedrock(prompt, system, model)
         else:

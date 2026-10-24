@@ -47,9 +47,16 @@ streamlit run app.py
 
 Optional AI brief (set before running; keys are never stored in code):
 ```bash
-export LLM_PROVIDER=anthropic          # or bedrock (also needs: pip install boto3)
+export LLM_PROVIDER=anthropic          # or groq, or bedrock (also needs: pip install boto3)
 export LLM_MODEL=<model id>
 export ANTHROPIC_API_KEY=<your key>    # for anthropic
+```
+
+Groq example:
+```bash
+export LLM_PROVIDER=groq
+export LLM_MODEL=openai/gpt-oss-120b
+export GROQ_API_KEY=<your key>
 ```
 
 ## Tests
