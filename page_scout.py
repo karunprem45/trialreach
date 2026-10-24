@@ -1,6 +1,7 @@
 """Site Scout page: ask where the next trial site should go. Display only."""
 import streamlit as st
 
+import llm
 import scout
 import ui
 
@@ -43,7 +44,14 @@ if just_ran:
                 st.write("The AI service is unavailable. Switching to offline mode.")
             else:
                 scout_step(step)
-        res = scout.run_scout(d, question, scores=ui.get_scores, on_step=show)
+        wait_box = st.empty()  # filled while the AI service asks us to wait
+
+        def busy(seconds):
+            wait_box.info("The free AI service is busy, retrying in a few seconds…")
+
+        with llm.notify_waits(busy):
+            res = scout.run_scout(d, question, scores=ui.get_scores, on_step=show)
+        wait_box.empty()
         status.update(label=f"Site Scout finished ({res['mode']} mode, {len(res['steps'])} tool calls)",
                       state="complete", expanded=False)
     st.session_state["scout_res"] = (question, res)
