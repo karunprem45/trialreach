@@ -43,7 +43,7 @@ with st.container(key="story-1"):
         head("01", title,
              f"{n_boston} of the {n_trials} recruiting {lc} {trials_word(n_trials)} ({share:.0%}) "
              "have a site in Boston.")
-        pts = sites.drop_duplicates(["facility", "lat", "lon"])
+        pts = ui.site_points(sites)
         fig = go.Figure()
         for name, mask, color, size in (
                 ("Rest of Massachusetts", pts["county"] != ui.BOSTON, ui.TEXT, 7),
@@ -52,11 +52,11 @@ with st.container(key="story-1"):
             fig.add_trace(go.Scattermap(
                 lat=p["lat"], lon=p["lon"], mode="markers", name=name,
                 marker=dict(size=size, color=color, opacity=0.8),
-                text=p["facility"], hovertemplate="%{text}<extra>" + name + "</extra>"))
+                text=p["hover"], hovertemplate="%{text}<extra></extra>"))
         fig.update_layout(
             map_style="carto-darkmatter", map_center=dict(lat=42.2, lon=-71.8), map_zoom=6.6,
             height=380, margin=dict(l=0, r=0, t=0, b=0), showlegend=True,
-            font=dict(color=ui.TEXT), paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color=ui.TEXT), paper_bgcolor="rgba(0,0,0,0)", hoverlabel=ui.HOVERLABEL,
             legend=dict(x=0.01, y=0.99, bgcolor="rgba(23,23,26,0.9)", itemclick=False,
                         itemdoubleclick=False))
         st.plotly_chart(fig, key=f"story_map_{mid}", config={"scrollZoom": False, "displayModeBar": False})

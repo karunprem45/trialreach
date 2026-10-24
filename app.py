@@ -4,7 +4,7 @@ import streamlit as st
 import ui
 
 st.set_page_config(page_title="TrialReach", layout="wide")
-st.markdown(ui.CSS, unsafe_allow_html=True)
+st.markdown(ui.css(), unsafe_allow_html=True)
 
 pages = [
     st.Page("page_story.py", title="Story", default=True),
@@ -16,5 +16,6 @@ nav = st.navigation(pages, position="top")
 st.markdown('<p class="brand">TrialReach</p>'
             '<p class="tagline">Finding the research deserts of Massachusetts.</p>',
             unsafe_allow_html=True)
-nav.run()
+with st.container(key="page-" + nav.title.lower().replace(" ", "-")):
+    nav.run()
 ui.footer(ui.load_data())
