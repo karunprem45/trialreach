@@ -68,6 +68,21 @@ TOOLS = [
 ]
 
 
+PPT = "people_with_disease_per_nearby_trial"
+TRIALS = "avg_recruiting_trials_within_25_miles"
+
+MEANING = {
+    "rank_counties": "Top 5 counties, worst research desert first. Score 100 = most people with the disease "
+                     "per nearby recruiting trial. " + PPT + " = adults with the disease divided by (trials + 1). "
+                     + TRIALS + " = recruiting trials within 25 miles, averaged over residents.",
+    "county_details": "One county: its score and rank (1 = worst), plus candidate hospitals, the nearest "
+                      "recruiting trials and towns where outreach has to try harder.",
+    "simulate_new_site": "What-if: one added trial site at this hospital. Score and rank are before and after "
+                         "(rank 1 = worst; a higher rank number is better).",
+    "write_outreach_flyer": "A short draft flyer for residents. It does not say anyone qualifies for a trial.",
+}
+
+
 def _pretty(x):
     return str(x).title()
 
@@ -116,11 +131,11 @@ class Toolbox:
     def rank_counties(self, disease):
         mid, counties, _, _ = self._get(disease)
         top = counties.head(5)
-        return {"disease": ds.CONDITIONS[mid], "counties": [
+        return {"meaning": MEANING["rank_counties"], "disease": ds.CONDITIONS[mid], "counties": [
             {"county": _pretty(r.county), "score": int(r.score),
-             "people_per_trial": int(round(r.people_per_trial)),
+             PPT: int(round(r.people_per_trial)),
              "prevalence_pct": round(float(r.prevalence), 1),
-             "trials_in_reach": round(float(r.trials_in_reach), 1)} for r in top.itertuples()]}
+             TRIALS: round(float(r.trials_in_reach), 1)} for r in top.itertuples()]}
 
     def county_details(self, county, disease):
         mid, counties, _, sites = self._get(disease)
@@ -129,10 +144,11 @@ class Toolbox:
         near = ds.nearest_trials(self.d, row["county"], sites, n=3)
         _, ej_towns = ds.ej_summary(self.d, row["county"])
         return {
+            "meaning": MEANING["county_details"],
             "county": _pretty(row["county"]), "disease": ds.CONDITIONS[mid], "rank": rank,
-            "score": int(row["score"]), "people_per_trial": int(round(row["people_per_trial"])),
+            "score": int(row["score"]), PPT: int(round(row["people_per_trial"])),
             "prevalence_pct": round(float(row["prevalence"]), 1),
-            "trials_in_reach": round(float(row["trials_in_reach"]), 1), "reach_miles": ds.REACH_MILES,
+            TRIALS: round(float(row["trials_in_reach"]), 1), "reach_miles": ds.REACH_MILES,
             "top_hospitals": [
                 {"name": r.FACILITY_NAME, "town": _pretty(r.MUNICIPALITY), "beds": int(r.beds),
                  "nearest_trial_miles": round(float(r.nearest_trial_miles), 1)}
@@ -158,6 +174,7 @@ class Toolbox:
         b = before.set_index("county").loc[str(county).strip().upper()]
         a = after.set_index("county").loc[str(county).strip().upper()]
         return {
+            "meaning": MEANING["simulate_new_site"],
             "county": _pretty(county), "hospital": hit["FACILITY_NAME"],
             "town": _pretty(hit["MUNICIPALITY"]), "disease": ds.CONDITIONS[mid],
             "score_before": int(b["score"]), "score_after": int(a["score"]),
@@ -172,12 +189,14 @@ class Toolbox:
                  f"Few recruiting studies are nearby. Language: {language}.")
         text = llm.generate(facts, FLYER_SYSTEM) if self.use_llm else None
         if text:
-            return {"county": name, "language": language, "source": "ai", "text": text}
+            return {"meaning": MEANING["write_outreach_flyer"], "county": name,
+                    "language": language, "source": "ai", "text": text}
         text = (f"{label} is common in {name} County: about {row['prevalence']:.1f}% of adults. "
                 f"There are few research studies nearby. Studies that are recruiting are listed "
                 f"on ClinicalTrials.gov. If you want to know more, talk to your doctor or the study team. "
                 f"This is not medical advice.")
-        return {"county": name, "language": "English", "source": "template", "text": text}
+        return {"meaning": MEANING["write_outreach_flyer"], "county": name,
+                "language": "English", "source": "template", "text": text}
 
     def run(self, name, args):
         """Run one tool by name. Always returns a JSON-safe dict; problems become {"error": ...}."""
@@ -199,7 +218,7 @@ def summarize(name, r):
     if name == "rank_counties":
         c = r["counties"][0]
         return (f"Worst for {r['disease'].lower()}: {c['county']} (score {c['score']}, "
-                f"{c['people_per_trial']:,} adults per nearby trial)")
+                f"{c[PPT]:,} adults per nearby trial)")
     if name == "county_details":
         h = r["top_hospitals"][0]["name"] if r["top_hospitals"] else "no candidate hospital"
         return f"{r['county']}: {len(r['nearest_trials'])} nearest trials, top hospital {h}"
@@ -217,7 +236,7 @@ def template_answer(steps):
         return "Site Scout could not complete the analysis. Try again or use the County brief tab."
     parts = [
         f"**Recommendation: {det['county']} County.** About {det['prevalence_pct']}% of adults have "
-        f"{det['disease'].lower()}, and there are about {det['people_per_trial']:,} adults per nearby "
+        f"{det['disease'].lower()}, and there are about {det[PPT]:,} adults per nearby "
         f"recruiting trial (research desert score {det['score']} of 100, rank {det['rank']})."]
     sim = res.get("simulate_new_site")
     if sim:
