@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "/Users/karuniyapremnath/claude_project/trailreach/trialreach/.venv/bin/uvx",
+      "args": ["mcp-server-fetch"],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
