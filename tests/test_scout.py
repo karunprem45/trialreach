@@ -46,6 +46,10 @@ def test_every_tool_returns_json_serializable_data(tb):
     ]
     for r in results[:4]:
         assert "error" not in r
+        assert r["meaning"] and "\n" not in r["meaning"]
+    for c in ranked["counties"] + [det]:
+        assert scout.PPT in c and scout.TRIALS in c
+        assert "people_per_trial" not in c and "trials_in_reach" not in c
     for r in results:
         assert json.loads(json.dumps(r)) == r
 
