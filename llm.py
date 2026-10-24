@@ -7,12 +7,30 @@ Env vars (no keys in code):
   GROQ_API_KEY        for "groq" (OpenAI-compatible API, called with requests)
   AWS_* credentials   for "bedrock" (needs boto3: pip install boto3)
 """
+import contextlib
+import contextvars
 import os
+import re
 import time
 
 TIMEOUT = 20  # seconds per attempt
 RETRIES = 2  # extra attempts after the first one
-RETRY_WAIT = 2  # seconds between attempts
+RETRY_WAIT = 2  # seconds between attempts when the server gives no hint
+MAX_WAIT = 12  # longest we wait for a 429 Retry-After
+UNITS = {"ms": 0.001, "s": 1, "m": 60, "h": 3600}
+# Optional callback(seconds), called before each wait so a page can tell the user.
+# A ContextVar is per script thread, so one Streamlit session never shows another's notice.
+on_wait = contextvars.ContextVar("llm_on_wait", default=None)
+
+
+@contextlib.contextmanager
+def notify_waits(callback):
+    """While active, callback(seconds) runs before each retry wait in this thread."""
+    token = on_wait.set(callback)
+    try:
+        yield
+    finally:
+        on_wait.reset(token)
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
@@ -37,6 +55,25 @@ def _retryable(r):
             or (r.status_code == 400 and "tool_use_failed" in r.text))
 
 
+def _wait_seconds(r):
+    """How long to wait before retrying. For a 429: the Retry-After header, else "try again in
+    7.6s" (also 340ms, 1m5.2s) from the error body, capped at MAX_WAIT. Otherwise RETRY_WAIT."""
+    if r.status_code == 429:
+        secs = None
+        try:
+            secs = float((getattr(r, "headers", None) or {}).get("retry-after"))
+        except (TypeError, ValueError):  # missing, or an HTTP date
+            pass
+        if secs is None:
+            m = re.search(r"try again in\s+((?:\d+(?:\.\d+)?(?:ms|h|m|s)\s*)+)", r.text or "", re.I)
+            if m:
+                secs = sum(float(n) * UNITS[u.lower()]
+                           for n, u in re.findall(r"(\d+(?:\.\d+)?)(ms|h|m|s)", m.group(1), re.I))
+        if secs is not None:
+            return min(max(secs, 0.0), MAX_WAIT)
+    return RETRY_WAIT
+
+
 def _post_groq(body):
     """POST to Groq. Retries up to RETRIES times on retryable errors, then raises on any error."""
     import requests
@@ -45,7 +82,14 @@ def _post_groq(body):
         r = requests.post(GROQ_URL, headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
                           json=body, timeout=TIMEOUT)
         if attempt < RETRIES and _retryable(r):
-            time.sleep(RETRY_WAIT)
+            wait = _wait_seconds(r)
+            callback = on_wait.get()
+            if callback:
+                try:
+                    callback(wait)
+                except Exception:  # a notice must never break the call
+                    pass
+            time.sleep(wait)
             continue
         r.raise_for_status()
         return r.json()
