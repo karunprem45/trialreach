@@ -5,8 +5,8 @@ import streamlit as st
 
 import deserts as ds
 
-INK, MUTED, BG, CARD, ACCENT = "#1F1A17", "#6B625C", "#FFFAF3", "#F3E9DC", "#C2502E"
-GRAY = "#CFC6BD"
+TEXT, MUTED, BG, CARD, BORDER, ACCENT = "#F5F5F5", "#A1A1AA", "#0B0B0C", "#17171A", "#2A2A2E", "#E5484D"
+BAR_GRAY = "#3F3F46"  # neutral bars; only the highlighted one uses ACCENT
 BOSTON = "SUFFOLK"  # "Boston" on screen means Suffolk County
 BOSTON_NOTE = "Boston here means Suffolk County (Boston, Chelsea, Revere and Winthrop)."
 
@@ -23,13 +23,13 @@ CSS = f"""
 .block-container, [data-testid="stMainBlockContainer"] {{
   max-width: 1000px; padding: 1.5rem 1.25rem 4rem;}}
 .brand {{font-family: "Source Serif 4", Georgia, serif; font-size: 1.5rem; font-weight: 600;
-        color: {INK}; margin: 0;}}
+        color: {TEXT}; margin: 0;}}
 .tagline {{color: {MUTED}; margin: 0 0 1rem; font-size: .95rem;}}
 
 /* story sections */
 .num {{color: {ACCENT}; font-weight: 600; letter-spacing: .14em; font-size: .85rem; margin: 0;}}
 [data-testid="stMarkdownContainer"] h2.headline {{
-  font-family: "Source Serif 4", Georgia, serif; color: {INK}; font-weight: 600;
+  font-family: "Source Serif 4", Georgia, serif; color: {TEXT}; font-weight: 600;
   font-size: clamp(1.7rem, 5vw, 2.6rem) !important; line-height: 1.15 !important;
   margin: .4rem 0 .9rem !important; padding: 0 !important;}}
 h2.headline em {{font-style: normal; color: {ACCENT};}}
@@ -45,7 +45,8 @@ h2.headline em {{font-style: normal; color: {ACCENT};}}
 /* cards: a grid that wraps into one column on phones */
 .cards {{display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 1rem; margin: 1rem 0;}}
-.card {{background: {CARD}; border-radius: 12px; padding: 1.1rem 1.25rem;}}
+.card {{background: {CARD}; border: 1px solid {BORDER}; border-radius: 12px;
+        padding: 1.1rem 1.25rem;}}
 .card .big {{font-family: "Source Serif 4", Georgia, serif; font-size: 2.1rem;
             font-weight: 600; color: {ACCENT}; line-height: 1.1;}}
 .card .title {{font-weight: 600; margin-top: .35rem;}}
@@ -55,10 +56,17 @@ h2.headline em {{font-style: normal; color: {ACCENT};}}
 [data-testid="stPageLink"] a {{justify-content: center; border-radius: 999px;
   padding: .7rem 1.4rem; border: 2px solid {ACCENT}; text-decoration: none;}}
 .st-key-cta-primary [data-testid="stPageLink"] a {{background: {ACCENT};}}
-.st-key-cta-primary [data-testid="stPageLink"] a * {{color: #FFFFFF !important; font-weight: 600;}}
+.st-key-cta-primary [data-testid="stPageLink"] a * {{color: {BG} !important; font-weight: 600;}}
 .st-key-cta-secondary [data-testid="stPageLink"] a * {{color: {ACCENT} !important; font-weight: 600;}}
 
-[data-testid="stMetric"] {{background: #FFFFFF; border-radius: 12px;}}
+/* dark text on red buttons: white on #E5484D is only 3.9:1, dark is 5.0:1 */
+[data-testid="stBaseButton-primary"], [data-testid="stBaseButton-primary"] * {{color: {BG} !important;}}
+/* active page in the top navigation */
+[data-testid="stTopNavLink"][aria-current="page"],
+[data-testid="stTopNavLink"][aria-current="page"] * {{color: {ACCENT} !important; font-weight: 600;}}
+[data-testid="stMetric"] {{background: {CARD}; border-radius: 12px;}}
+[data-testid="stCaptionContainer"] {{color: {MUTED};}}
+a {{color: {ACCENT};}}
 @media (max-width: 640px) {{
   .block-container, [data-testid="stMainBlockContainer"] {{padding: 1rem .9rem 3rem;}}
   [class*="st-key-story-"] {{padding: 1.75rem 0;}}
