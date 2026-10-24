@@ -8,8 +8,12 @@ Env vars (no keys in code):
   AWS_* credentials   for "bedrock" (needs boto3: pip install boto3)
 """
 import os
+import time
 
-TIMEOUT = 20  # seconds
+TIMEOUT = 20  # seconds per attempt
+RETRIES = 2  # extra attempts after the first one
+RETRY_WAIT = 2  # seconds between attempts
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 def _anthropic(prompt, system, model):
@@ -27,9 +31,27 @@ def _anthropic(prompt, system, model):
     return r.json()["content"][0]["text"]
 
 
-def _groq(prompt, system, model):
+def _retryable(r):
+    """Groq is busy (429), failing (5xx), or the model made a bad tool call (400 tool_use_failed)."""
+    return (r.status_code == 429 or r.status_code >= 500
+            or (r.status_code == 400 and "tool_use_failed" in r.text))
+
+
+def _post_groq(body):
+    """POST to Groq. Retries up to RETRIES times on retryable errors, then raises on any error."""
     import requests
 
+    for attempt in range(RETRIES + 1):
+        r = requests.post(GROQ_URL, headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
+                          json=body, timeout=TIMEOUT)
+        if attempt < RETRIES and _retryable(r):
+            time.sleep(RETRY_WAIT)
+            continue
+        r.raise_for_status()
+        return r.json()
+
+
+def _groq(prompt, system, model):
     try:  # fixes Mac SSL errors
         import truststore
         truststore.inject_into_ssl()
@@ -39,15 +61,9 @@ def _groq(prompt, system, model):
     messages = [{"role": "user", "content": prompt}]
     if system:
         messages.insert(0, {"role": "system", "content": system})
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
-        json={"model": model, "max_tokens": 2000, "reasoning_effort": "low",
-              "messages": messages},
-        timeout=TIMEOUT,
-    )
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
+    data = _post_groq({"model": model, "max_tokens": 2000, "reasoning_effort": "low",
+                       "messages": messages})
+    return data["choices"][0]["message"]["content"]
 
 
 def _bedrock(prompt, system, model):
@@ -75,8 +91,6 @@ def chat_with_tools(messages: list, tools: list) -> dict | None:
         key = os.environ.get("GROQ_API_KEY", "")
         if not model or not key:
             return None
-        import requests
-
         try:  # fixes Mac SSL errors
             import truststore
             truststore.inject_into_ssl()
@@ -87,11 +101,7 @@ def chat_with_tools(messages: list, tools: list) -> dict | None:
                 "messages": messages}
         if tools:
             body.update(tools=tools, tool_choice="auto")
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {key}"}, json=body, timeout=TIMEOUT)
-        r.raise_for_status()
-        return r.json()["choices"][0]["message"]
+        return _post_groq(body)["choices"][0]["message"]
     except Exception:
         return None
 

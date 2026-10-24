@@ -17,6 +17,7 @@ LANGUAGES = ["English", "Spanish", "Portuguese", "Haitian Creole", "Chinese"]
 SCORE_TITLE = "Research desert score (higher = fewer trials per person)"
 DESERT_SCALE = ["#2A2A2E", "#7F1D1D", "#E5484D"]  # dark to red
 ZOOM_COUNTY = 8.5
+TOWN_DOTS = 2  # index of the clickable town-dot trace in the map figure
 MILES_TITLE = "Miles to nearest recruiting trial (higher = farther)"
 
 SYSTEM_PROMPT = """You write short outreach text for a clinical research office in Massachusetts.
@@ -62,13 +63,16 @@ def split_brief(text):
 
 
 def clicked_town(event, towns):
-    """Town name from a map click, or None."""
+    """Town name from a map click, or None.
+    Clicks land on the invisible town dots (trace TOWN_DOTS), one dot per row of `towns`.
+    A point with a "location" (a shape click) is accepted too."""
     points = ((event or {}).get("selection") or {}).get("points") or []
     for p in points:
         if p.get("location"):
             return str(p["location"]).upper()
-        if p.get("curve_number") == 0 and p.get("point_index") is not None:
-            return towns["town"].iloc[p["point_index"]]
+        idx = p.get("point_index")
+        if p.get("curve_number") == TOWN_DOTS and idx is not None and 0 <= idx < len(towns):
+            return towns["town"].iloc[idx]
     return None
 
 
@@ -150,7 +154,7 @@ with tab_map:
             unsafe_allow_html=True)
         if zoomed and st.button("Back to all of Massachusetts"):
             # new chart key clears the old click, so the same town can be clicked again
-            st.session_state.update(map_zoomed=False, map_reset=reset_n + 1, seen_town=None)
+            st.session_state.update(map_zoomed=False, map_reset=reset_n + 1)
             st.rerun()
 
         t = towns.copy()
@@ -173,7 +177,7 @@ with tab_map:
             geojson=d["shapes"], featureidkey="properties.TOWN20",
             locations=t["town"], z=z, zmin=zmin, zmax=zmax, colorscale=DESERT_SCALE,
             marker_line_color="#52525B", marker_line_width=0.4,
-            text=t["town"].map(pretty), customdata=hover_data, hovertemplate=hover,
+            hoverinfo="skip",  # hover and click go through the town dots below
             showlegend=False,
             # keep full color after a click (no dimming of other towns)
             selected=dict(marker=dict(opacity=1)), unselected=dict(marker=dict(opacity=1)),
@@ -189,6 +193,13 @@ with tab_map:
             locations=sorted(keep), z=[0] * len(keep), showscale=False, showlegend=False,
             colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
             marker_line_color=ui.ACCENT, marker_line_width=2.5, hoverinfo="skip"))
+        # One near-invisible dot per town (curve TOWN_DOTS). Plotly selects dots on click
+        # reliably, shapes not, so the dots carry the hover pop-up and the click.
+        fig.add_trace(go.Scattermap(
+            lat=t["lat"], lon=t["lon"], mode="markers", showlegend=False,
+            marker=dict(size=48 if zoomed else 22, color=ui.TEXT, opacity=0.01),
+            selected=dict(marker=dict(opacity=0.01)), unselected=dict(marker=dict(opacity=0.01)),
+            text=t["town"].map(pretty), customdata=hover_data, hovertemplate=hover))
         if show_sites and not sites.empty:
             s = ui.site_points(sites)
             fig.add_trace(go.Scattermap(
@@ -217,15 +228,12 @@ with tab_map:
         event = st.plotly_chart(fig, key=f"map_{mid}_{reset_n}", on_select="rerun",
                                 selection_mode="points", config={"scrollZoom": False})
 
-        # A new click selects that town's county and zooms to it (seen_town ignores a stale selection).
-        town = clicked_town(event, t)
-        if town != st.session_state.get("seen_town"):
-            st.session_state["seen_town"] = town
-            hit = county_of.get(town)
-            if hit:
-                st.session_state["county"] = hit
-                st.session_state["map_zoomed"] = True
-                st.rerun()
+        # A click selects that town's county and zooms to it. The new chart key (map_reset)
+        # clears the click, so it is handled once and the same town can be clicked again.
+        hit = county_of.get(clicked_town(event, t))
+        if hit:
+            st.session_state.update(county=hit, map_zoomed=True, map_reset=reset_n + 1)
+            st.rerun()
         st.caption(f"Selected: {pretty(cur)} County. Click or tap a town to zoom to its county, "
                    "or use the county picker above the tabs. Open the County brief tab for details.")
 
