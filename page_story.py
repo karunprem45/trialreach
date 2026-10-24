@@ -84,7 +84,8 @@ with st.container(key="story-2"):
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color=ui.INK, size=15),
         xaxis=dict(visible=False, showgrid=False, zeroline=False, range=[0, max(n_worst, 1) * 1.2]),
-        yaxis=dict(showgrid=False, zeroline=False, autorange="reversed", ticks=""))
+        yaxis=dict(showgrid=False, zeroline=False, autorange="reversed", ticks="",
+                   automargin=True))  # grow the left margin to fit full county names
     st.plotly_chart(bar, key=f"story_bar_{mid}", config={"staticPlot": True})
     st.caption("People with the disease for each nearby recruiting trial.",
                help=f"Estimated adults with the disease (CDC PLACES share of adults times county "
