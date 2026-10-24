@@ -2,6 +2,10 @@
 
 Finding the research deserts of Massachusetts. Hackachusetts 2026, Healthcare & Biotech, challenge H5 (Making clinical research more accessible).
 
+## Demo video
+- [Watch the 2-minute demo](media/TrialReach_demo.mp4)
+- YouTube: (link coming soon)
+- Live app: https://trialreach.streamlit.app
 ## Problem
 Clinical trials are not spread evenly. Some counties have many adults with a disease but very few recruiting studies nearby. Hospital research offices, trial sponsors and state health officials need to know where to open the next study site and which communities to reach.
 
