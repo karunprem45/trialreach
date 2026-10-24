@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "H1 Tests on save",
+      "trigger": "PostFileSave",
+      "matcher": "(^|/)(deserts|llm)\\.py$|(^|/)tests/.*\\.py$",
+      "action": {
+        "type": "agent",
+        "prompt": "Run `python -m pytest -q` in the project's .venv. If all pass, reply with one line. If something fails, show only the failing test names and the assertion line. Do not edit any files."
+      }
+    }
+  ]
+}
