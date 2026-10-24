@@ -15,6 +15,7 @@ MODE_SCORE = "Research Desert Score (county)"
 MODE_MILES = "Miles to nearest trial (town)"
 LANGUAGES = ["English", "Spanish", "Portuguese", "Haitian Creole", "Chinese"]
 SCORE_TITLE = "Research desert score (higher = fewer trials per person)"
+DESERT_SCALE = ["#2A2A2E", "#7F1D1D", "#E5484D"]  # dark to red
 MILES_TITLE = "Miles to nearest recruiting trial (higher = farther)"
 
 SYSTEM_PROMPT = """You write short outreach text for a clinical research office in Massachusetts.
@@ -141,8 +142,8 @@ with tab_map:
                                              "Miles", MILES_TITLE)
         fig = go.Figure(go.Choroplethmap(
             geojson=d["shapes"], featureidkey="properties.TOWN20",
-            locations=t["town"], z=z, zmin=zmin, zmax=zmax, colorscale="OrRd",
-            marker_line_color="white", marker_line_width=0.3,
+            locations=t["town"], z=z, zmin=zmin, zmax=zmax, colorscale=DESERT_SCALE,
+            marker_line_color="#52525B", marker_line_width=0.4,
             text=t["town"].map(pretty) + " (" + t["county"].map(pretty) + ")",
             hovertemplate="%{text}<br>" + bar + ": %{z:.0f}<extra></extra>",
             showlegend=False,
@@ -159,23 +160,24 @@ with tab_map:
             geojson=outline, featureidkey="properties.TOWN20",
             locations=sorted(keep), z=[0] * len(keep), showscale=False, showlegend=False,
             colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
-            marker_line_color="#222222", marker_line_width=1.6, hoverinfo="skip"))
+            marker_line_color=ui.TEXT, marker_line_width=1.8, hoverinfo="skip"))
         if show_sites and not sites.empty:
             s = sites.drop_duplicates(["facility", "lat", "lon"])
             fig.add_trace(go.Scattermap(
                 lat=s["lat"], lon=s["lon"], mode="markers", name="Trial site",
-                marker=dict(size=7, color="#1F5FBF"),
+                marker=dict(size=7, color=ui.TEXT),
                 text=s["facility"], hovertemplate="%{text}<extra>Trial site</extra>"))
         if show_hosp:
             h = d["hospitals"][d["hospitals"]["FACILITY_TYPE"] == "Acute Hospital"].dropna(subset=["lat", "lon"])
             fig.add_trace(go.Scattermap(
                 lat=h["lat"], lon=h["lon"], mode="markers", name="Acute hospital",
-                marker=dict(size=8, color="#222222"),
+                marker=dict(size=8, color=ui.MUTED),
                 text=h["FACILITY_NAME"], hovertemplate="%{text}<extra>Acute hospital</extra>"))
         fig.update_layout(
-            map_style="carto-positron", map_center=dict(lat=42.15, lon=-71.75), map_zoom=6.9,
+            map_style="carto-darkmatter", map_center=dict(lat=42.15, lon=-71.75), map_zoom=6.9,
             height=520, margin=dict(l=0, r=0, t=0, b=80), showlegend=True,
-            legend=dict(x=0.01, y=0.99, bgcolor="rgba(255,250,243,0.9)", itemclick=False,
+            font=dict(color=ui.TEXT), paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(x=0.01, y=0.99, bgcolor="rgba(23,23,26,0.9)", itemclick=False,
                         itemdoubleclick=False))
         event = st.plotly_chart(fig, key=f"map_{mid}", on_select="rerun",
                                 selection_mode="points", config={"scrollZoom": False})

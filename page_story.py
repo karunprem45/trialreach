@@ -46,7 +46,7 @@ with st.container(key="story-1"):
         pts = sites.drop_duplicates(["facility", "lat", "lon"])
         fig = go.Figure()
         for name, mask, color, size in (
-                ("Rest of Massachusetts", pts["county"] != ui.BOSTON, "#8C837B", 7),
+                ("Rest of Massachusetts", pts["county"] != ui.BOSTON, ui.TEXT, 7),
                 ("Boston", pts["county"] == ui.BOSTON, ui.ACCENT, 8)):
             p = pts[mask]
             fig.add_trace(go.Scattermap(
@@ -54,9 +54,10 @@ with st.container(key="story-1"):
                 marker=dict(size=size, color=color, opacity=0.8),
                 text=p["facility"], hovertemplate="%{text}<extra>" + name + "</extra>"))
         fig.update_layout(
-            map_style="carto-positron", map_center=dict(lat=42.2, lon=-71.8), map_zoom=6.6,
+            map_style="carto-darkmatter", map_center=dict(lat=42.2, lon=-71.8), map_zoom=6.6,
             height=380, margin=dict(l=0, r=0, t=0, b=0), showlegend=True,
-            legend=dict(x=0.01, y=0.99, bgcolor="rgba(255,250,243,0.9)", itemclick=False,
+            font=dict(color=ui.TEXT), paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(x=0.01, y=0.99, bgcolor="rgba(23,23,26,0.9)", itemclick=False,
                         itemdoubleclick=False))
         st.plotly_chart(fig, key=f"story_map_{mid}", config={"scrollZoom": False, "displayModeBar": False})
         st.caption("Source: ClinicalTrials.gov, recruiting studies with a Massachusetts site.",
@@ -76,13 +77,13 @@ with st.container(key="story-2"):
           "The gap is small for this disease."))
     bar = go.Figure(go.Bar(
         y=[w_name, o_name], x=[n_worst, n_other], orientation="h",
-        marker_color=[ui.ACCENT, ui.GRAY], width=0.55,
+        marker_color=[ui.ACCENT, ui.BAR_GRAY], width=0.55,
         text=[f"{n_worst:,.0f}", f"{n_other:,.0f}"], textposition="outside", cliponaxis=False,
-        textfont=dict(size=16, color=ui.INK), hoverinfo="skip"))
+        textfont=dict(size=16, color=ui.TEXT), hoverinfo="skip"))
     bar.update_layout(
         height=190, margin=dict(l=0, r=30, t=0, b=0), showlegend=False,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=ui.INK, size=15),
+        font=dict(color=ui.TEXT, size=15),
         xaxis=dict(visible=False, showgrid=False, zeroline=False, range=[0, max(n_worst, 1) * 1.2]),
         yaxis=dict(showgrid=False, zeroline=False, autorange="reversed", ticks="",
                    automargin=True))  # grow the left margin to fit full county names
