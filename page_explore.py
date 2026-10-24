@@ -16,6 +16,7 @@ MODE_MILES = "Miles to nearest trial (town)"
 LANGUAGES = ["English", "Spanish", "Portuguese", "Haitian Creole", "Chinese"]
 SCORE_TITLE = "Research desert score (higher = fewer trials per person)"
 DESERT_SCALE = ["#2A2A2E", "#7F1D1D", "#E5484D"]  # dark to red
+ZOOM_COUNTY = 8.5
 MILES_TITLE = "Miles to nearest recruiting trial (higher = farther)"
 
 SYSTEM_PROMPT = """You write short outreach text for a clinical research office in Massachusetts.
@@ -78,6 +79,7 @@ st.title("Explore")
 st.markdown("Pick a disease, click a town on the map and see where research is missing.")
 mid = ui.disease_picker()
 label = ds.CONDITIONS[mid]
+lc = ui.lower_label(label)
 counties, towns, sites = ui.get_scores(mid)
 worst = counties.iloc[0]
 boston = counties[counties["county"] == "SUFFOLK"].iloc[0]
@@ -132,20 +134,46 @@ with tab_map:
     with left:
         cur = st.session_state.get("county")
         cur = cur if cur in names else names[0]
+        zoomed = st.session_state.get("map_zoomed", False)
+        reset_n = st.session_state.get("map_reset", 0)
+
+        # info card for the selected county
+        ci = counties.set_index("county")
+        c = ci.loc[cur]
+        st.markdown(ui.info_card(
+            f"<em>{ui.esc(pretty(cur))} County</em> · {ui.esc(label)}",
+            [("Desert score (0 to 100)", f"{int(c['score'])}"),
+             ("People per nearby trial", f"{c['people_per_trial']:,.0f}"),
+             (f"Share of adults with {lc}", f"{c['prevalence']:.1f}%"),
+             (f"Avg trials within {ds.REACH_MILES} miles", f"{c['trials_in_reach']:.1f}"),
+             ("Avg miles to nearest trial", f"{c['avg_miles']:.1f}")]),
+            unsafe_allow_html=True)
+        if zoomed and st.button("Back to all of Massachusetts"):
+            # new chart key clears the old click, so the same town can be clicked again
+            st.session_state.update(map_zoomed=False, map_reset=reset_n + 1, seen_town=None)
+            st.rerun()
+
         t = towns.copy()
-        t["score"] = t["county"].map(counties.set_index("county")["score"])
+        t["score"] = t["county"].map(ci["score"])
         if mode == MODE_SCORE:
-            z, zmin, zmax, bar, bar_title = t["score"], 0, 100, "Score", SCORE_TITLE
+            z, zmin, zmax, bar_title = t["score"], 0, 100, SCORE_TITLE
         else:
-            z, zmin, zmax, bar, bar_title = (t["nearest_miles"], 0,
-                                             float(np.percentile(t["nearest_miles"], 98)),
-                                             "Miles", MILES_TITLE)
+            z, zmin, zmax, bar_title = (t["nearest_miles"], 0,
+                                        float(np.percentile(t["nearest_miles"], 98)), MILES_TITLE)
+        # rich hover: town, county, score, people per trial, avg trials in reach, miles to nearest
+        hover_data = np.column_stack([
+            t["county"].map(pretty), t["score"], t["county"].map(ci["people_per_trial"]),
+            t["county"].map(ci["trials_in_reach"]), t["nearest_miles"]]).astype(object)
+        hover = (f"<b>%{{text}}</b><br>County: %{{customdata[0]}}"
+                 "<br>Desert score: %{customdata[1]:.0f}"
+                 f"<br>People with {lc} per nearby trial: " "%{customdata[2]:,.0f}"
+                 f"<br>Avg recruiting trials within {ds.REACH_MILES} miles: " "%{customdata[3]:.1f}"
+                 "<br>Miles to nearest trial: %{customdata[4]:.1f}<extra></extra>")
         fig = go.Figure(go.Choroplethmap(
             geojson=d["shapes"], featureidkey="properties.TOWN20",
             locations=t["town"], z=z, zmin=zmin, zmax=zmax, colorscale=DESERT_SCALE,
             marker_line_color="#52525B", marker_line_width=0.4,
-            text=t["town"].map(pretty) + " (" + t["county"].map(pretty) + ")",
-            hovertemplate="%{text}<br>" + bar + ": %{z:.0f}<extra></extra>",
+            text=t["town"].map(pretty), customdata=hover_data, hovertemplate=hover,
             showlegend=False,
             # keep full color after a click (no dimming of other towns)
             selected=dict(marker=dict(opacity=1)), unselected=dict(marker=dict(opacity=1)),
@@ -160,38 +188,46 @@ with tab_map:
             geojson=outline, featureidkey="properties.TOWN20",
             locations=sorted(keep), z=[0] * len(keep), showscale=False, showlegend=False,
             colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
-            marker_line_color=ui.TEXT, marker_line_width=1.8, hoverinfo="skip"))
+            marker_line_color=ui.ACCENT, marker_line_width=2.5, hoverinfo="skip"))
         if show_sites and not sites.empty:
-            s = sites.drop_duplicates(["facility", "lat", "lon"])
+            s = ui.site_points(sites)
             fig.add_trace(go.Scattermap(
                 lat=s["lat"], lon=s["lon"], mode="markers", name="Trial site",
                 marker=dict(size=7, color=ui.TEXT),
-                text=s["facility"], hovertemplate="%{text}<extra>Trial site</extra>"))
+                text=s["hover"], hovertemplate="%{text}<extra></extra>"))
         if show_hosp:
             h = d["hospitals"][d["hospitals"]["FACILITY_TYPE"] == "Acute Hospital"].dropna(subset=["lat", "lon"])
             fig.add_trace(go.Scattermap(
                 lat=h["lat"], lon=h["lon"], mode="markers", name="Acute hospital",
                 marker=dict(size=8, color=ui.MUTED),
-                text=h["FACILITY_NAME"], hovertemplate="%{text}<extra>Acute hospital</extra>"))
+                text="<b>" + h["FACILITY_NAME"].map(ui.esc) + "</b><br>" + h["MUNICIPALITY"].map(pretty).map(ui.esc),
+                hovertemplate="%{text}<extra>Acute hospital</extra>"))
+        # zoomed: center on the county's population-weighted center
+        if zoomed:
+            clat, clon = ds.county_center(d, cur)
+            center, zoom = dict(lat=clat, lon=clon), ZOOM_COUNTY
+        else:
+            center, zoom = dict(lat=42.15, lon=-71.75), 6.9
         fig.update_layout(
-            map_style="carto-darkmatter", map_center=dict(lat=42.15, lon=-71.75), map_zoom=6.9,
+            map_style="carto-darkmatter", map_center=center, map_zoom=zoom,
             height=520, margin=dict(l=0, r=0, t=0, b=80), showlegend=True,
-            font=dict(color=ui.TEXT), paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color=ui.TEXT), paper_bgcolor="rgba(0,0,0,0)", hoverlabel=ui.HOVERLABEL,
             legend=dict(x=0.01, y=0.99, bgcolor="rgba(23,23,26,0.9)", itemclick=False,
                         itemdoubleclick=False))
-        event = st.plotly_chart(fig, key=f"map_{mid}", on_select="rerun",
+        event = st.plotly_chart(fig, key=f"map_{mid}_{reset_n}", on_select="rerun",
                                 selection_mode="points", config={"scrollZoom": False})
 
-        # A new click selects that town's county (seen_town ignores a stale selection).
+        # A new click selects that town's county and zooms to it (seen_town ignores a stale selection).
         town = clicked_town(event, t)
         if town != st.session_state.get("seen_town"):
             st.session_state["seen_town"] = town
             hit = county_of.get(town)
-            if hit and hit != st.session_state.get("county"):
+            if hit:
                 st.session_state["county"] = hit
+                st.session_state["map_zoomed"] = True
                 st.rerun()
-        st.caption(f"Selected: {pretty(cur)} County. Click a town to change it, or use the "
-                   "county picker above the tabs. Open the County brief tab for details.")
+        st.caption(f"Selected: {pretty(cur)} County. Click or tap a town to zoom to its county, "
+                   "or use the county picker above the tabs. Open the County brief tab for details.")
 
     with right:
         st.markdown("**Counties, worst first**")

@@ -1,0 +1,126 @@
+/* TrialReach styles. Colors come from the :root variables that ui.css() adds in front. */
+
+/* ---------- page ---------- */
+.block-container, [data-testid="stMainBlockContainer"] {
+  max-width: 1000px; padding: 1.5rem 1.25rem 4rem;}
+.brand {font-family: "Source Serif 4", Georgia, serif; font-size: 1.5rem; font-weight: 600;
+        color: var(--text); margin: 0;}
+.tagline {color: var(--muted); margin: 0 0 1rem; font-size: .95rem;}
+a {color: var(--accent);}
+[data-testid="stCaptionContainer"] {color: var(--muted);}
+
+/* ---------- story sections ---------- */
+.num {color: var(--accent); font-weight: 600; letter-spacing: .14em; font-size: .85rem; margin: 0;}
+[data-testid="stMarkdownContainer"] h2.headline {
+  font-family: "Source Serif 4", Georgia, serif; color: var(--text); font-weight: 600;
+  font-size: clamp(1.7rem, 5vw, 2.6rem) !important; line-height: 1.15 !important;
+  margin: .4rem 0 .9rem !important; padding: 0 !important;}
+h2.headline em {font-style: normal; color: var(--accent);}
+.lede {color: var(--muted); font-size: 1.1rem; line-height: 1.55; max-width: 38rem; margin: 0 0 1rem;}
+[class*="st-key-story-"] {padding: 2.75rem 0;}
+
+/* ---------- cards ---------- */
+.cards {display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem; margin: 1rem 0;}
+.card {background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+       padding: 1.1rem 1.25rem; margin: 0 0 1rem;
+       transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s;}
+.cards .card {margin: 0;}
+.card .big {font-family: "Source Serif 4", Georgia, serif; font-size: 2.1rem;
+            font-weight: 600; color: var(--accent); line-height: 1.1;}
+.card .title {font-weight: 600; margin-top: .35rem;}
+.card .small {color: var(--muted); font-size: .95rem;}
+/* info card above the map */
+.card .head {font-weight: 600; font-size: 1.1rem; margin-bottom: .6rem;}
+.card .head em {font-style: normal; color: var(--accent);}
+.stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .75rem;}
+.stat .v {font-family: "Source Serif 4", Georgia, serif; font-size: 1.5rem; font-weight: 600;
+          color: var(--text); line-height: 1.2;}
+.stat .k {color: var(--muted); font-size: .85rem;}
+
+[data-testid="stMetric"] {background: var(--card); border-radius: 12px;
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease);}
+
+/* ---------- buttons and page links ---------- */
+[data-testid="stPageLink"] a {justify-content: center; border-radius: 999px;
+  padding: .7rem 1.4rem; border: 2px solid var(--accent); text-decoration: none;}
+.st-key-cta-primary [data-testid="stPageLink"] a {background-color: var(--accent);}
+.st-key-cta-primary [data-testid="stPageLink"] a * {color: var(--bg) !important; font-weight: 600;}
+.st-key-cta-secondary [data-testid="stPageLink"] a * {color: var(--accent) !important; font-weight: 600;}
+/* dark text on red buttons: white on #E5484D is only 3.9:1, dark is 5.0:1 */
+[data-testid="stBaseButton-primary"], [data-testid="stBaseButton-primary"] * {color: var(--bg) !important;}
+
+/* red ripple: a circle grows from the center while the button is pressed */
+[data-testid="stBaseButton-secondary"], [data-testid="stBaseButton-primary"],
+[data-testid="stPageLink"] a {
+  --ripple: rgba(229, 72, 77, .45);
+  cursor: pointer;
+  background-image: radial-gradient(circle, var(--ripple) 0 45%, transparent 46%);
+  background-repeat: no-repeat; background-position: center; background-size: 0% 0%;
+  transition: background-size .6s var(--ease), transform .15s var(--ease),
+              box-shadow .2s var(--ease);}
+/* solid red buttons: a light ripple, red on red would not show */
+[data-testid="stBaseButton-primary"], .st-key-cta-primary [data-testid="stPageLink"] a {
+  --ripple: rgba(255, 255, 255, .4);}
+[data-testid="stBaseButton-secondary"]:active, [data-testid="stBaseButton-primary"]:active,
+[data-testid="stPageLink"] a:active {
+  background-size: 300% 300%; transform: scale(.97);
+  transition: background-size .35s var(--ease), transform .1s var(--ease);}
+
+/* ---------- top navigation: underline slides in, stays on the active page ---------- */
+[data-testid="stTopNavLink"] {position: relative;}
+[data-testid="stTopNavLink"]::after {
+  content: ""; position: absolute; left: 12%; right: 12%; bottom: 2px; height: 2px;
+  background: var(--accent); transform: scaleX(0); transform-origin: left;
+  transition: transform .25s var(--ease);}
+[data-testid="stTopNavLink"][aria-current="page"]::after {transform: scaleX(1);}
+[data-testid="stTopNavLink"][aria-current="page"],
+[data-testid="stTopNavLink"][aria-current="page"] * {color: var(--accent) !important; font-weight: 600;}
+
+/* ---------- hover effects (mouse only, so a tap never leaves a lifted card) ---------- */
+@media (hover: hover) {
+  .card:hover, [data-testid="stMetric"]:hover {
+    transform: translateY(-4px); border-color: var(--accent);
+    box-shadow: 0 10px 24px rgba(229, 72, 77, .22);}
+  [data-testid="stBaseButton-secondary"]:hover, [data-testid="stBaseButton-primary"]:hover,
+  [data-testid="stPageLink"] a:hover {
+    box-shadow: 0 0 0 1px var(--accent), 0 6px 22px rgba(229, 72, 77, .35);}
+  [data-testid="stTopNavLink"]:hover::after {transform: scaleX(1);}
+}
+
+/* ---------- page switch: soft fade. Each page has its own keyframes so switching restarts it ---------- */
+.st-key-page-story {animation: pageInA .6s var(--ease);}
+.st-key-page-explore {animation: pageInB .6s var(--ease);}
+.st-key-page-site-scout {animation: pageInC .6s var(--ease);}
+@keyframes pageInA {from {opacity: 0; transform: translateY(8px);}}
+@keyframes pageInB {from {opacity: 0; transform: translateY(8px);}}
+@keyframes pageInC {from {opacity: 0; transform: translateY(8px);}}
+
+/* ---------- scroll motion: sections slide up 24px and fade in as they enter ---------- */
+/* Only the start state is in the keyframes, so the end state is the normal style (hover still works).
+   Without browser support nothing here applies and everything is visible. */
+@supports (animation-timeline: view()) {
+  [class*="st-key-story-"]:not(.st-key-story-0) {
+    animation: slideUp auto var(--ease) both;
+    animation-timeline: view(); animation-range: cover 0% cover 18%;}
+  /* cards stagger: each one starts a little later in the scroll */
+  .cards .card {
+    animation: slideUpSmall auto var(--ease) both;
+    animation-timeline: view(); animation-range: cover 0% cover 18%;}
+  .cards .card:nth-child(2) {animation-range: cover 3% cover 21%;}
+  .cards .card:nth-child(3) {animation-range: cover 6% cover 24%;}
+  @keyframes slideUp {from {opacity: 0; transform: translateY(24px);}}
+  @keyframes slideUpSmall {from {opacity: 0; transform: translateY(16px);}}
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 640px) {
+  .block-container, [data-testid="stMainBlockContainer"] {padding: 1rem .9rem 3rem;}
+  [class*="st-key-story-"] {padding: 1.75rem 0;}
+}
+
+/* ---------- reduced motion: no animations or transitions (loading spinners stay) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *:not([data-testid="stSpinner"] *), *::before, *::after {
+    animation: none !important; transition: none !important;}
+}

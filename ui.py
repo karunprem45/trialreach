@@ -1,5 +1,7 @@
 """Shared UI helpers for all pages. Display only; scoring lives in deserts.py."""
+import functools
 import html
+from pathlib import Path
 
 import streamlit as st
 
@@ -18,61 +20,23 @@ SOURCES = ("[ClinicalTrials.gov](https://clinicaltrials.gov) · "
 PLAIN = {"environmental-justice neighborhoods": "neighborhoods that need extra outreach",
          "prevalence": "share of adults"}
 
-CSS = f"""
-<style>
-.block-container, [data-testid="stMainBlockContainer"] {{
-  max-width: 1000px; padding: 1.5rem 1.25rem 4rem;}}
-.brand {{font-family: "Source Serif 4", Georgia, serif; font-size: 1.5rem; font-weight: 600;
-        color: {TEXT}; margin: 0;}}
-.tagline {{color: {MUTED}; margin: 0 0 1rem; font-size: .95rem;}}
+# Pop-up style for every Plotly hover label (dark card, red border, white text).
+HOVERLABEL = dict(bgcolor=CARD, bordercolor=ACCENT, align="left",
+                  font=dict(color=TEXT, size=14))
 
-/* story sections */
-.num {{color: {ACCENT}; font-weight: 600; letter-spacing: .14em; font-size: .85rem; margin: 0;}}
-[data-testid="stMarkdownContainer"] h2.headline {{
-  font-family: "Source Serif 4", Georgia, serif; color: {TEXT}; font-weight: 600;
-  font-size: clamp(1.7rem, 5vw, 2.6rem) !important; line-height: 1.15 !important;
-  margin: .4rem 0 .9rem !important; padding: 0 !important;}}
-h2.headline em {{font-style: normal; color: {ACCENT};}}
-.lede {{color: {MUTED}; font-size: 1.1rem; line-height: 1.55; max-width: 38rem; margin: 0 0 1rem;}}
-[class*="st-key-story-"] {{padding: 2.75rem 0; animation: fadeUp .8s ease-out both;}}
-.st-key-story-2 {{animation-delay: .05s;}} .st-key-story-3 {{animation-delay: .1s;}}
-.st-key-story-4 {{animation-delay: .15s;}} .st-key-story-5 {{animation-delay: .2s;}}
-@keyframes fadeUp {{from {{opacity: 0; transform: translateY(12px);}}
-                   to {{opacity: 1; transform: none;}}}}
-@media (prefers-reduced-motion: reduce) {{
-  [class*="st-key-story-"] {{animation: none !important;}}}}
 
-/* cards: a grid that wraps into one column on phones */
-.cards {{display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 1rem; margin: 1rem 0;}}
-.card {{background: {CARD}; border: 1px solid {BORDER}; border-radius: 12px;
-        padding: 1.1rem 1.25rem;}}
-.card .big {{font-family: "Source Serif 4", Georgia, serif; font-size: 2.1rem;
-            font-weight: 600; color: {ACCENT}; line-height: 1.1;}}
-.card .title {{font-weight: 600; margin-top: .35rem;}}
-.card .small {{color: {MUTED}; font-size: .95rem;}}
+@functools.cache
+def _stylesheet():
+    """Palette variables + style.css as one <style> block (blank lines removed for markdown)."""
+    root = (f":root {{--bg: {BG}; --card: {CARD}; --border: {BORDER}; --text: {TEXT}; "
+            f"--muted: {MUTED}; --accent: {ACCENT}; --ease: cubic-bezier(.2, .8, .2, 1);}}")
+    css = (Path(__file__).parent / "style.css").read_text(encoding="utf-8")
+    lines = [ln for ln in (root + "\n" + css).splitlines() if ln.strip()]
+    return "<style>\n" + "\n".join(lines) + "\n</style>"
 
-/* page links as buttons */
-[data-testid="stPageLink"] a {{justify-content: center; border-radius: 999px;
-  padding: .7rem 1.4rem; border: 2px solid {ACCENT}; text-decoration: none;}}
-.st-key-cta-primary [data-testid="stPageLink"] a {{background: {ACCENT};}}
-.st-key-cta-primary [data-testid="stPageLink"] a * {{color: {BG} !important; font-weight: 600;}}
-.st-key-cta-secondary [data-testid="stPageLink"] a * {{color: {ACCENT} !important; font-weight: 600;}}
 
-/* dark text on red buttons: white on #E5484D is only 3.9:1, dark is 5.0:1 */
-[data-testid="stBaseButton-primary"], [data-testid="stBaseButton-primary"] * {{color: {BG} !important;}}
-/* active page in the top navigation */
-[data-testid="stTopNavLink"][aria-current="page"],
-[data-testid="stTopNavLink"][aria-current="page"] * {{color: {ACCENT} !important; font-weight: 600;}}
-[data-testid="stMetric"] {{background: {CARD}; border-radius: 12px;}}
-[data-testid="stCaptionContainer"] {{color: {MUTED};}}
-a {{color: {ACCENT};}}
-@media (max-width: 640px) {{
-  .block-container, [data-testid="stMainBlockContainer"] {{padding: 1rem .9rem 3rem;}}
-  [class*="st-key-story-"] {{padding: 1.75rem 0;}}
-}}
-</style>
-"""
+def css():
+    return _stylesheet()
 
 
 # ---------- small helpers ----------
@@ -113,6 +77,31 @@ def cards(items):
         f'<div class="title">{esc(title)}</div><div class="small">{esc(small)}</div></div>'
         for big, title, small in items)
     return f'<div class="cards">{out}</div>'
+
+
+def info_card(title_html, stats):
+    """One card with a heading (HTML, already escaped) and a row of (label, value) stats."""
+    body = "".join(f'<div class="stat"><div class="v">{esc(v)}</div><div class="k">{esc(k)}</div></div>'
+                   for k, v in stats)
+    return f'<div class="card"><div class="head">{title_html}</div><div class="stats">{body}</div></div>'
+
+
+def site_points(sites):
+    """One row per trial site with a ready hover text: shortened study title, site, city."""
+    cols = ["facility", "city", "lat", "lon", "county", "hover"]
+    if sites.empty:
+        return sites.iloc[0:0].reindex(columns=cols)
+    g = (sites.groupby(["facility", "city", "lat", "lon", "county"], dropna=False)
+         .agg(title=("title", "first"), n=("nct", "nunique")).reset_index())
+
+    def hover(r):
+        title = r["title"] if len(r["title"]) <= 70 else r["title"][:67].rstrip() + "..."
+        more = f" (+{r['n'] - 1} more)" if r["n"] > 1 else ""
+        city = f"<br>{esc(r['city'])}" if r["city"] else ""
+        return f"<b>{esc(title)}</b>{esc(more)}<br>{esc(r['facility'])}{city}"
+
+    g["hover"] = g.apply(hover, axis=1)
+    return g[cols]
 
 
 # ---------- cached data ----------
