@@ -42,7 +42,8 @@ def _groq(prompt, system, model):
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
-        json={"model": model, "max_tokens": 800, "messages": messages},
+        json={"model": model, "max_tokens": 2000, "reasoning_effort": "low",
+              "messages": messages},
         timeout=TIMEOUT,
     )
     r.raise_for_status()
