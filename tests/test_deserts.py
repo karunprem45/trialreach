@@ -56,3 +56,16 @@ def test_u7_generate_returns_none_without_env(monkeypatch):
     for var in ("LLM_PROVIDER", "LLM_MODEL", "ANTHROPIC_API_KEY"):
         monkeypatch.delenv(var, raising=False)
     assert llm.generate("hello") is None
+
+def test_u8_simulate_new_site_columns_and_effect(d, scores):
+    counties, _, sites = scores["DIABETES"]
+    worst = counties.iloc[0]
+    hosp = ds.candidate_hospitals(d, worst["county"], sites).dropna(subset=["lat", "lon"]).iloc[0]
+    before, after = ds.simulate_new_site(d, "DIABETES", float(hosp["lat"]), float(hosp["lon"]), "Test")
+    assert len(before) == len(after) == 14
+    for df in (before, after):
+        assert {"rank", "newly_reached"} <= set(df.columns)
+    assert before["county"].tolist() == counties["county"].tolist()
+    assert (before["newly_reached"] == 0).all()
+    assert after["newly_reached"].sum() >= 0
+    assert after["score"].max() <= 100

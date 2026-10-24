@@ -79,3 +79,17 @@ trial = st.fixed_dictionaries({
 @given(trial)
 def test_p5_trial_json_round_trip(record):
     assert json.loads(json.dumps(record)) == record
+
+
+# Feature: site-scout, Property 6: Adding a site never increases any county's people_per_trial
+_D = ds.load_all()
+
+
+@settings(max_examples=30, deadline=None)
+@given(st.sampled_from(list(ds.CONDITIONS)), st.floats(41.2, 42.9), st.floats(-73.5, -69.9))
+def test_p6_new_site_never_hurts(mid, new_lat, new_lon):
+    before, after = ds.simulate_new_site(_D, mid, new_lat, new_lon, "Test site")
+    b = before.set_index("county")
+    a = after.set_index("county").loc[b.index]  # same county order
+    assert (a["people_per_trial"] <= b["people_per_trial"] + 1e-9).all()
+    assert (a["score"] <= b["score"]).all()

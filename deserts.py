@@ -134,6 +134,12 @@ def _weighted_mean(df, col):
 def county_scores(d, mid):
     """Returns (county_df, towns_with_access, sites). county_df: 14 rows, worst first."""
     sites = trial_sites(d, mid)
+    df, towns = _score_table(d, mid, sites)
+    return df, towns, sites
+
+
+def _score_table(d, mid, sites):
+    """County table and town access for a given set of trial sites."""
     towns = town_access(d, sites)
 
     agg = towns.groupby("county").apply(
@@ -152,7 +158,33 @@ def county_scores(d, mid):
     df["people_per_trial"], df["score"] = desert_score(df["affected"], df["trials_in_reach"])
     df = df.drop(columns="totalpopulation")
     df = df.sort_values("people_per_trial", ascending=False).reset_index(drop=True)
-    return df, towns, sites
+    return df, towns
+
+
+def simulate_new_site(d, mid, lat, lon, label):
+    """Add one hypothetical trial site. Returns (before_df, after_df).
+    The after score uses the ORIGINAL max people_per_trial, so both are comparable.
+    Both tables get `rank` (1 = worst) and `newly_reached` (residents with no trial
+    within REACH_MILES before and one after; 0 in the before table)."""
+    before, towns_b, sites = county_scores(d, mid)
+    # county of the new site = county of the nearest town center (same rule as trial_sites)
+    near = d["towns"].iloc[int(miles(lat, lon, d["towns"]["lat"].to_numpy(),
+                                     d["towns"]["lon"].to_numpy()).argmin())]
+    new = pd.DataFrame([("SIMULATED", label, "N/A", label, "", lat, lon, near["county"])],
+                       columns=SITE_COLS)
+    sites_after = new if sites.empty else pd.concat([sites, new], ignore_index=True)
+    after, towns_a = _score_table(d, mid, sites_after)
+
+    top = before["people_per_trial"].max()
+    after["score"] = (np.rint(100 * after["people_per_trial"] / top).astype(int)
+                      if top > 0 else 0)
+    newly = towns_a["pop"].where((towns_b["trials_in_reach"] == 0)
+                                 & (towns_a["trials_in_reach"] >= 1), 0)
+    after["newly_reached"] = after["county"].map(newly.groupby(towns_a["county"]).sum()).fillna(0)
+    before["newly_reached"] = 0
+    for df in (before, after):
+        df["rank"] = df["people_per_trial"].rank(ascending=False, method="first").astype(int)
+    return before, after
 
 
 def state_prevalence(county_df):

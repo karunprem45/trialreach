@@ -302,6 +302,36 @@ with tab_brief:
             st.dataframe(et, hide_index=True, column_config={
                 "Limited English (%)": st.column_config.NumberColumn(format="%.0f")})
 
+    # What-if simulator: add one hypothetical trial site at a candidate hospital
+    st.markdown("#### What if a hospital opened a study?")
+    cands = hospitals.dropna(subset=["lat", "lon"])
+    if cands.empty:
+        st.info("No acute hospital with a map location is listed in this county.")
+    else:
+        hname = st.selectbox("Candidate hospital", list(cands["FACILITY_NAME"]), key="sim_hospital")
+        sim_key = (county, mid, hname)
+        if st.button("Simulate a new trial site here"):
+            h = cands[cands["FACILITY_NAME"] == hname].iloc[0]
+            st.session_state["sim"] = (sim_key, ds.simulate_new_site(
+                d, mid, float(h["lat"]), float(h["lon"]), hname))
+        sim = st.session_state.get("sim")
+        if sim and sim[0] == sim_key:
+            b = sim[1][0].set_index("county").loc[county]
+            a = sim[1][1].set_index("county").loc[county]
+            moved = int(a["rank"] - b["rank"])
+            r1, r2, r3 = st.columns(3)
+            r1.metric("Desert score", f"{int(a['score'])}", f"{int(a['score'] - b['score'])} from {int(b['score'])}",
+                      delta_color="inverse", border=True,
+                      help="100 is the worst county today. After scaling uses today's worst county, so the two are comparable.")
+            r2.metric("Rank (1 = worst)", f"{int(a['rank'])}",
+                      f"{moved:+d} from {int(b['rank'])}" if moved else f"no change from {int(b['rank'])}",
+                      delta_color="off", border=True)
+            r3.metric(f"Residents newly within {ds.REACH_MILES} mi of a trial",
+                      f"{int(sim[1][1]['newly_reached'].sum()):,}", border=True,
+                      help="Residents in towns that had no recruiting trial within reach before.")
+            st.caption("This is a what-if on public place-level data, not a plan or a promise of a study. "
+                       "The new site counts as one added trial.")
+
 # ---------- AI outreach tab ----------
 with tab_ai:
     st.markdown(f"### Outreach for {pretty(county)} County · {label}")
