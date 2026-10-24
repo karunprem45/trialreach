@@ -20,4 +20,4 @@
 - [x] 7. Verify
   - [x] 7.1 `pytest -q`
   - [x] 7.2 AppTest smoke check of all 3 pages (not committed)
-- [ ] 8. Git: branch `feature/story-page`, author Dheepak, commit, push, PR, merge
+- [x] 8. Git: branch `feature/story-page`, author Dheepak, commit, push, PR, merge
