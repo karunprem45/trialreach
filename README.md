@@ -3,6 +3,8 @@
 Finding the research deserts of Massachusetts. Hackachusetts 2026, Healthcare & Biotech, challenge H5 (Making clinical research more accessible).
 
 ## Demo video
+[![TrialReach demo video thumbnail](media/TrialReach_thumbnail.png)](media/TrialReach_demo.mp4)
+
 - [Watch the 2-minute demo](media/TrialReach_demo.mp4)
 - YouTube: (link coming soon)
 - Live app: https://trialreach.streamlit.app
