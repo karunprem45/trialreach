@@ -65,6 +65,37 @@ def _bedrock(prompt, system, model):
     return out["output"]["message"]["content"][0]["text"]
 
 
+def chat_with_tools(messages: list, tools: list) -> dict | None:
+    """One chat turn with tool calling (groq only, OpenAI-compatible `tools` param).
+    Returns the raw assistant message dict, or None if not configured or on any error."""
+    try:
+        if os.environ.get("LLM_PROVIDER", "").lower() != "groq":
+            return None
+        model = os.environ.get("LLM_MODEL", "")
+        key = os.environ.get("GROQ_API_KEY", "")
+        if not model or not key:
+            return None
+        import requests
+
+        try:  # fixes Mac SSL errors
+            import truststore
+            truststore.inject_into_ssl()
+        except ImportError:
+            pass
+
+        body = {"model": model, "max_tokens": 2000, "reasoning_effort": "low",
+                "messages": messages}
+        if tools:
+            body.update(tools=tools, tool_choice="auto")
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {key}"}, json=body, timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]
+    except Exception:
+        return None
+
+
 def generate(prompt: str, system: str = "") -> str | None:
     """Return the model text, or None if not configured or anything goes wrong."""
     try:

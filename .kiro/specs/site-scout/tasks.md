@@ -13,12 +13,12 @@
 
 ## Part B: Site Scout agent (author Dheepak, branch feature/site-scout-agent, after A is merged)
 
-- [ ] 6. `llm.py`: `chat_with_tools`
+- [x] 6. `llm.py`: `chat_with_tools`
   - _Requirements: 2.1_
-- [ ] 7. `scout.py`: tools, agent loop, offline fallback
+- [x] 7. `scout.py`: tools, agent loop, offline fallback
   - _Requirements: 2.2 to 2.5, 3.1, 3.2_
-- [ ] 8. `app.py`: Site Scout tab
+- [x] 8. `app.py`: Site Scout tab
   - _Requirements: 4.1 to 4.3_
-- [ ] 9. Tests: fallback picks worst county; tools are JSON-serializable
-- [ ] 10. Run `pytest -q`
-- [ ] 11. Git: commit, push, PR, merge
+- [x] 9. Tests: fallback picks worst county; tools are JSON-serializable
+- [x] 10. Run `pytest -q`
+- [x] 11. Git: commit, push, PR, merge
